@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deriv Personal Analyzer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
+  color: #fff;
+  min-height: 100vh;
+  padding: 15px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+.header {
+  text-align: center;
+  padding: 25px 20px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 20px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.header h1 { font-size: 24px; margin-bottom: 8px; }
+.header p { color: #888; font-size: 13px; }
+.status-badge {
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: 25px;
+  font-size: 13px;
+  font-weight: bold;
+  margin-top: 12px;
+}
+.status-disconnected { background: #ff4757; }
+.status-connecting { background: #ffa502; color: #000; }
+.status-connected { background: #2ed573; color: #000; animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+.api-section {
+  background: linear-gradient(135deg, #1e3a2f 0%, #0f2a1f 100%);
+  border: 2px solid #2ed573;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.api-section h2 { color: #2ed573; font-size: 16px; margin-bottom: 12px; }
+.api-input-group { margin-bottom: 12px; }
+.api-input-group label {
+  display: block;
+  font-size: 11px;
+  color: #aaa;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.api-input {
+  width: 100%;
+  background: rgba(0,0,0,0.3);
+  border: 2px solid #2a4a3f;
+  color: #fff;
+  padding: 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: monospace;
+}
+.api-input:focus { border-color: #2ed573; outline: none; }
+.api-help {
+  background: rgba(0,0,0,0.2);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #aaa;
+  line-height: 1.5;
+}
+.api-help a { color: #00d4ff; }
+.api-help ol { margin-left: 18px; margin-top: 6px; }
+.api-help li { margin: 4px 0; }
+
+.btn {
+  width: 100%;
+  background: linear-gradient(135deg, #2ed573, #1eae5c);
+  color: #000;
+  border: none;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+}
+.btn:active { transform: scale(0.98); }
+.btn:disabled { background: #333; color: #666; }
+.btn-secondary { background: linear-gradient(135deg, #ff4757, #cc2e3e); color: #fff; }
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+.control-group {
+  background: rgba(255,255,255,0.03);
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.control-group label {
+  display: block;
+  font-size: 10px;
+  color: #888;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+select, input {
+  width: 100%;
+  background: rgba(0,0,0,0.3);
+  color: #fff;
+  border: 1px solid #3a3a6a;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 15px;
+}
+.stat-card {
+  background: rgba(255,255,255,0.03);
+  padding: 15px;
+  border-radius: 12px;
+  border-left: 4px solid #00d4ff;
+}
+.stat-card.hot { border-left-color: #ff4757; background: rgba(255,71,87,0.1); }
+.stat-card.cold { border-left-color: #2ed573; background: rgba(46,213,115,0.1); }
+.stat-card h3 { font-size: 10px; color: #888; margin-bottom: 6px; }
+.stat-value { font-size: 28px; font-weight: bold; }
+.stat-sub { font-size: 11px; color: #666; margin-top: 3px; }
+
+.heatmap {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 15px;
+}
+.heat-cell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-weight: bold;
+  font-size: 20px;
+}
+.heat-cell .pct { font-size: 10px; font-weight: normal; margin-top: 2px; }
+.heat-hot { background: linear-gradient(135deg, #ff4757, #ff6b7a); }
+.heat-warm { background: linear-gradient(135deg, #ffa502, #ffb84d); color: #000; }
+.heat-cool { background: linear-gradient(135deg, #2ed573, #4ee88d); color: #000; }
+.heat-cold { background: #1a1a3a; color: #666; }
+
+.windows { display: flex; flex-direction: column; gap: 8px; }
+.window-row {
+  background: rgba(255,255,255,0.03);
+  padding: 12px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.window-label { min-width: 50px; font-weight: bold; color: #888; font-size: 12px; }
+.window-bar { flex: 1; height: 20px; background: rgba(0,0,0,0.3); border-radius: 10px; overflow: hidden; }
+.window-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #0099cc); transition: width 0.5s; }
+.window-info { min-width: 70px; text-align: right; font-size: 12px; font-weight: bold; }
+
+.recommendation {
+  background: linear-gradient(135deg, #1a2a1a, #0f1f0f);
+  border: 2px solid #2ed573;
+  border-radius: 16px;
+  padding: 20px;
+  margin-top: 15px;
+  text-align: center;
+}
+.rec-number { font-size: 64px; font-weight: bold; color: #2ed573; line-height: 1; }
+.rec-label { font-size: 11px; color: #888; margin-bottom: 5px; text-transform: uppercase; }
+.rec-details { font-size: 13px; color: #aaa; margin-top: 12px; line-height: 1.6; }
+.rec-confidence {
+  display: inline-block;
+  background: rgba(46,213,115,0.2);
+  padding: 6px 16px;
+  border-radius: 20px;
+  margin-top: 10px;
+  font-weight: bold;
+  color: #2ed573;
+  font-size: 14px;
+}
+
+.log {
+  background: #000;
+  border-radius: 10px;
+  padding: 10px;
+  font-family: monospace;
+  font-size: 10px;
+  max-height: 120px;
+  overflow-y: auto;
+  margin-top: 15px;
+}
+.log div { padding: 3px 0; border-bottom: 1px solid #111; }
+.log .error { color: #ff4757; }
+.log .success { color: #2ed573; }
+.log .info { color: #00d4ff; }
+
+.hidden { display: none; }
+.divider {
+  text-align: center;
+  margin: 15px 0;
+  color: #666;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🤖 Deriv Personal Analyzer</h1>
+  <p>Connect with your API token for dedicated access</p>
+  <div class="status-badge status-disconnected" id="status">DISCONNECTED</div>
+</div>
+
+<div class="api-section">
+  <h2>🔑 Step 1: Enter Your Deriv API Token</h2>
+  
+  <div class="api-input-group">
+    <label>API Token (from Deriv.com)</label>
+    <input type="text" class="api-input" id="apiToken" placeholder="Paste your API token here...">
+  </div>
+  
+  <div class="api-help">
+    <strong>📱 How to get your API token:</strong>
+    <ol>
+      <li>Go to <a href="https://app.deriv.com" target="_blank">app.deriv.com</a></li>
+      <li>Login → Settings → API Token</li>
+      <li>Click "Create new token"</li>
+      <li>Name: "Analyzer", Check "Read" only</li>
+      <li>Copy and paste above</li>
+    </ol>
+  </div>
+</div>
+
+<div class="divider">— Analysis Settings —</div>
+
+<div class="controls">
+  <div class="control-group">
+    <label>Symbol</label>
+    <select id="symbol">
+      <option value="R_10">Volatility 10</option>
+      <option value="R_25">Volatility 25</option>
+      <option value="R_50">Volatility 50</option>
+      <option value="R_75">Volatility 75</option>
+      <option value="R_100" selected>Volatility 100</option>
+      <option value="1HZ10V">Vol 10 (1s)</option>
+      <option value="1HZ25V">Vol 25 (1s)</option>
+      <option value="1HZ50V">Vol 50 (1s)</option>
+      <option value="1HZ75V">Vol 75 (1s)</option>
+      <option value="1HZ100V">Vol 100 (1s)</option>
+      <option value="BOOM500">Boom 500</option>
+      <option value="BOOM1000">Boom 1000</option>
+      <option value="CRASH500">Crash 500</option>
+      <option value="CRASH1000">Crash 1000</option>
+      <option value="JD10">Jump 10</option>
+      <option value="JD25">Jump 25</option>
+      <option value="JD50">Jump 50</option>
+      <option value="JD75">Jump 75</option>
+      <option value="JD100">Jump 100</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <label>Windows (ticks)</label>
+    <input type="text" id="windows" value="10,25,50,100,200,500">
+  </div>
+</div>
+
+<button class="btn" id="connectBtn" onclick="toggleConnection()">CONNECT & START ANALYZING</button>
+
+<div class="stats hidden" id="stats">
+  <div class="stat-card">
+    <h3>TICKS ANALYZED</h3>
+    <div class="stat-value" id="totalTicks">0</div>
+  </div>
+  <div class="stat-card">
+    <h3>BEST WINDOW</h3>
+    <div class="stat-value" id="bestWindow">-</div>
+    <div class="stat-sub">ticks</div>
+  </div>
+  <div class="stat-card hot">
+    <h3>🔥 HOTTEST</h3>
+    <div class="stat-value" id="hottestDigit" style="color: #ff4757;">-</div>
+    <div class="stat-sub" id="hottestPct">-</div>
+  </div>
+  <div class="stat-card cold">
+    <h3>❄️ COOLEST</h3>
+    <div class="stat-value" id="coolestDigit" style="color: #2ed573;">-</div>
+    <div class="stat-sub" id="coolestPct">-</div>
+  </div>
+</div>
+
+<div class="heatmap hidden" id="heatmap"></div>
+<div class="windows hidden" id="windowsDisplay"></div>
+
+<div class="recommendation hidden" id="recommendation">
+  <div class="rec-label">MOST FREQUENT DIGIT</div>
+  <div class="rec-number" id="recNumber">-</div>
+  <div class="rec-details" id="recDetails"></div>
+  <div class="rec-confidence" id="recConfidence">Confidence: -%</div>
+</div>
+
+<div class="log" id="log"></div>
+
+<script>
+let ws = null;
+let isConnected = false;
+let tickBuffer = [];
+let totalTicks = 0;
+let tickWindows = [10, 25, 50, 100, 200, 500];
+let currentSymbol = 'R_100';
+
+function log(msg, type = 'info') {
+  const logEl = document.getElementById('log');
+  const div = document.createElement('div');
+  div.className = type;
+  div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  logEl.insertBefore(div, logEl.firstChild);
+  if (logEl.children.length > 50) logEl.removeChild(logEl.lastChild);
+}
+
+function toggleConnection() {
+  if (isConnected) {
+    disconnect();
+  } else {
+    connect();
+  }
+}
+
+function connect() {
+  const btn = document.getElementById('connectBtn');
+  const status = document.getElementById('status');
+  const apiToken = document.getElementById('apiToken').value.trim();
+  
+  if (!apiToken) {
+    log('Please enter your API token!', 'error');
+    alert('Please enter your Deriv API token');
+    return;
+  }
+  
+  currentSymbol = document.getElementById('symbol').value;
+  tickWindows = document.getElementById('windows').value
+    .split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
+  
+  btn.disabled = true;
+  status.className = 'status-badge status-connecting';
+  status.textContent = 'CONNECTING...';
+  log('Connecting to Deriv...');
+  
+  tickBuffer = [];
+  totalTicks = 0;
+  
+  ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
+  
+  ws.onopen = () => {
+    log('Connected! Authorizing...');
+    ws.send(JSON.stringify({ authorize: apiToken }));
+  };
+  
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    
+    if (data.error) {
+      log('Error: ' + data.error.message, 'error');
+      if (data.error.code === 'InvalidToken') {
+        alert('Invalid API token. Please check and try again.');
+        disconnect();
+      }
+      return;
+    }
+    
+    if (data.msg_type === 'authorize') {
+      isConnected = true;
+      status.className = 'status-badge status-connected';
+      status.textContent = 'CONNECTED';
+      btn.disabled = false;
+      btn.textContent = 'DISCONNECT';
+      btn.classList.add('btn-secondary');
+      
+      log('Authorized! Account: ' + data.authorize.loginid, 'success');
+      
+      ws.send(JSON.stringify({ ticks: currentSymbol, subscribe: 1 }));
+      log('Subscribed to ' + currentSymbol);
+      
+      document.getElementById('stats').classList.remove('hidden');
+      document.getElementById('heatmap').classList.remove('hidden');
+      document.getElementById('windowsDisplay').classList.remove('hidden');
+      document.getElementById('recommendation').classList.remove('hidden');
+    }
+    
+    if (data.msg_type === 'tick') {
+      processTick(data.tick);
+    }
+  };
+  
+  ws.onerror = () => {
+    log('Connection error', 'error');
+  };
+  
+  ws.onclose = () => {
+    isConnected = false;
+    status.className = 'status-badge status-disconnected';
+    status.textContent = 'DISCONNECTED';
+    btn.disabled = false;
+    btn.textContent = 'CONNECT & START ANALYZING';
+    btn.classList.remove('btn-secondary');
+    log('Disconnected', 'error');
+  };
+}
+
+function disconnect() {
+  if (ws) {
+    ws.send(JSON.stringify({ forget_all: 'tick' }));
+    ws.close();
+  }
+  isConnected = false;
+}
+
+function getLastDigit(price, pip) {
+  const pipStr = String(pip);
+  let decimals = 0;
+  if (pipStr.includes('e-')) {
+    decimals = parseInt(pipStr.split('e-')[1]);
+  } else if (pipStr.includes('.')) {
+    decimals = pipStr.split('.')[1].length;
+  }
+  return parseInt(price.toFixed(decimals).slice(-1));
+}
+
+function processTick(tick) {
+  const digit = getLastDigit(tick.quote, tick.pip || 0.01);
+  tickBuffer.push(digit);
+  
+  const maxWindow = Math.max(...tickWindows);
+  if (tickBuffer.length > maxWindow) {
+    tickBuffer = tickBuffer.slice(-maxWindow);
+  }
+  
+  totalTicks++;
+  document.getElementById('totalTicks').textContent = totalTicks;
+  
+  if (totalTicks % 3 === 0) {
+    updateAnalysis();
+  }
+}
+
+function updateAnalysis() {
+  if (tickBuffer.length < 10) return;
+  
+  const globalCounts = new Array(10).fill(0);
+  let totalSamples = 0;
+  
+  tickWindows.forEach(w => {
+    const recent = tickBuffer.slice(-w);
+    recent.forEach(d => {
+      globalCounts[d]++;
+      totalSamples++;
+    });
+  });
+  
+  let hottest = 0, coolest = 0;
+  let maxC = -1, minC = Infinity;
+  
+  for (let d = 0; d < 10; d++) {
+    if (globalCounts[d] > maxC) { maxC = globalCounts[d]; hottest = d; }
+    if (globalCounts[d] < minC) { minC = globalCounts[d]; coolest = d; }
+  }
+  
+  const hottestPct = ((maxC / totalSamples) * 100).toFixed(1);
+  const coolestPct = ((minC / totalSamples) * 100).toFixed(1);
+  
+  document.getElementById('hottestDigit').textContent = hottest;
+  document.getElementById('hottestPct').textContent = hottestPct + '%';
+  document.getElementById('coolestDigit').textContent = coolest;
+  document.getElementById('coolestPct').textContent = coolestPct + '%';
+  
+  const heatmapEl = document.getElementById('heatmap');
+  heatmapEl.innerHTML = '';
+  
+  const largestWindow = Math.max(...tickWindows);
+  const displayCounts = new Array(10).fill(0);
+  tickBuffer.slice(-largestWindow).forEach(d => displayCounts[d]++);
+  const displayTotal = Math.min(tickBuffer.length, largestWindow);
+  
+  for (let d = 0; d < 10; d++) {
+    const pct = (displayCounts[d] / displayTotal) * 100;
+    let cls = 'heat-cell ';
+    if (pct > 13) cls += 'heat-hot';
+    else if (pct > 11) cls += 'heat-warm';
+    else if (pct > 9) cls += 'heat-cool';
+    else cls += 'heat-cold';
+    
+    const cell = document.createElement('div');
+    cell.className = cls;
+    cell.innerHTML = d + '<span class="pct">' + pct.toFixed(0) + '%</span>';
+    heatmapEl.appendChild(cell);
+  }
+  
+  const windowsEl = document.getElementById('windowsDisplay');
+  windowsEl.innerHTML = '';
+  
+  let bestWindow = tickWindows[0];
+  let bestSkew = 0;
+  
+  tickWindows.forEach(w => {
+    const recent = tickBuffer.slice(-w);
+    if (recent.length === 0) return;
+    
+    const counts = new Array(10).fill(0);
+    recent.forEach(d => counts[d]++);
+    
+    const max = Math.max(...counts);
+    const hotDigit = counts.indexOf(max);
+    const pct = (max / recent.length) * 100;
+    
+    const expected = recent.length / 10;
+    const skew = expected > 0 ? max / expected : 0;
+    if (skew > bestSkew) { bestSkew = skew; bestWindow = w; }
+    
+    const row = document.createElement('div');
+    row.className = 'window-row';
+    row.innerHTML = '<div class="window-label">' + w + '</div>' +
+      '<div class="window-bar"><div class="window-fill" style="width:' + Math.min(pct * 4, 100) + '%"></div></div>' +
+      '<div class="window-info">' + hotDigit + ' (' + pct.toFixed(0) + '%)</div>';
+    windowsEl.appendChild(row);
+  });
+  
+  document.getElementById('bestWindow').textContent = bestWindow;
+  document.getElementById('recNumber').textContent = hottest;
+  
+  const consistency = tickWindows.filter(w => {
+    const recent = tickBuffer.slice(-w);
+    const counts = new Array(10).fill(0);
+    recent.forEach(d => counts[d]++);
+    return counts.indexOf(Math.max(...counts)) === hottest;
+  }).length / tickWindows.length;
+  
+  const confidence = Math.min(95, Math.round(consistency * 70 + Math.min(totalTicks / 500, 1) * 25));
+  
+  document.getElementById('recDetails').innerHTML = 
+    '<strong>Symbol:</strong> ' + currentSymbol + '<br>' +
+    '<strong>Best Window:</strong> ' + bestWindow + ' ticks<br>' +
+    '<strong>Total Ticks:</strong> ' + totalTicks + '<br>' +
+    '<strong>Consistency:</strong> ' + (consistency * 100).toFixed(0) + '% of windows';
+  
+  document.getElementById('recConfidence').textContent = 'Confidence: ' + confidence + '%';
+}
+
+log('Welcome! Enter your API token to begin.', 'info');
+</script>
+</body>
+</html>
